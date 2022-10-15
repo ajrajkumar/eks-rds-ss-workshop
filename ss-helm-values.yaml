@@ -1,0 +1,57 @@
+governance:
+  enabled: true
+  zookeeper:
+    enabled: true
+    replicaCount: 3
+    persistence:
+      enabled: false
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 20Gi
+    resources:
+      limits: {}
+      requests:
+        memory: 256Mi
+        cpu: 200m
+
+compute:
+  image:
+    repository: "apache/shardingsphere-proxy"
+    pullPolicy: IfNotPresent
+    tag: 5.1.2
+  imagePullSecrets: []
+  resources:
+    limits: {}
+    requests:
+      memory: 250Mi
+      cpu: 200m
+  replicas: 1
+  service:
+    type: LoadBalancer
+    port: 3307
+  mysqlConnector:
+    enabled: false
+  startPort: 3307
+  serverConfig:
+    authority:
+      privilege:
+        type: ALL_PRIVILEGES_PERMITTED
+      users:
+        - password: root
+          user: root
+    mode:
+      overwrite: false
+      repository:
+        props:
+          maxRetries: 3
+          namespace: governance_ds
+          operationTimeoutMilliseconds: 5000
+          retryIntervalMilliseconds: 500
+          server-lists: "shardingsphere-proxy-zookeeper:2181"
+          timeToLiveSeconds: 600
+        type: ZooKeeper
+      type: Cluster
+    props:
+      proxy-frontend-database-protocol-type: "PostgreSQL"
+      sql-show: true

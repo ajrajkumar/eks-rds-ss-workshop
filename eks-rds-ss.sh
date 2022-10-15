@@ -341,7 +341,7 @@ install_packages
 export AWS_REGION=`curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq .region -r`
 ##initial_cloud9_permission
 export EKS_STACK_NAME="eks-rds-ss-workshop"
-export EKS_CFN_FILE="${HOME}/environment/eks-rds-ss-main.yaml"
+export EKS_CFN_FILE="${HOME}/environment/eks-rds-ss-workshop/eks-rds-ss-main.yaml"
 export EKS_NAMESPACE="kube-system"
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text) 
 export VPCID=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `VPC`].OutputValue' --output text)
@@ -354,8 +354,7 @@ install_postgresql
 ##create_iam_user
 ##clone_git
 chk_cloud9_permission
-create_eks_cluster
-exit
+#-create_eks_cluster
 export EKS_CLUSTER_NAME=$(aws cloudformation describe-stacks --query "Stacks[].Outputs[?(OutputKey == 'EKSClusterName')][].{OutputValue:OutputValue}" --output text)
 export vpcsg=$(aws ec2 describe-security-groups --filters Name=ip-permission.from-port,Values=5432 Name=ip-permission.to-port,Values=5432 --query "SecurityGroups[0].GroupId" --output text)
 print_environment
