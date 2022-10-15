@@ -301,6 +301,7 @@ function create_eks_cluster()
     typeset -i counter
     counter=0
     echo "aws cloudformation  create-stack --stack-name ${EKS_STACK_NAME} --parameters ParameterKey=VPC,ParameterValue=${VPCID} ParameterKey=SubnetAPrivate,ParameterValue=${SUBNETA} ParameterKey=SubnetBPrivate,ParameterValue=${SUBNETB} ParameterKey=SubnetCPrivate,ParameterValue=${SUBNETC} --template-body file://${EKS_CFN_FILE} --capabilities CAPABILITY_IAM"
+    return
     aws cloudformation  create-stack --stack-name ${EKS_STACK_NAME} --parameters ParameterKey=VPC,ParameterValue=${VPCID} ParameterKey=SubnetAPrivate,ParameterValue=${SUBNETA} ParameterKey=SubnetBPrivate,ParameterValue=${SUBNETB} ParameterKey=SubnetCPrivate,ParameterValue=${SUBNETC} --template-body file://${EKS_CFN_FILE} --capabilities CAPABILITY_IAM
     sleep 60
     # Checking to make sure the cloudformation completes before continuing
@@ -354,14 +355,14 @@ install_postgresql
 ##create_iam_user
 ##clone_git
 chk_cloud9_permission
-#-create_eks_cluster
+create_eks_cluster
 export EKS_CLUSTER_NAME=$(aws cloudformation describe-stacks --query "Stacks[].Outputs[?(OutputKey == 'EKSClusterName')][].{OutputValue:OutputValue}" --output text)
 export vpcsg=$(aws ec2 describe-security-groups --filters Name=ip-permission.from-port,Values=5432 Name=ip-permission.to-port,Values=5432 --query "SecurityGroups[0].GroupId" --output text)
 print_environment
 #fix_git
 update_kubeconfig
 update_eks
-#install_loadbalancer
+##install_loadbalancer
 chk_installation
 run_kubectl
 #build_and_publish_container_images

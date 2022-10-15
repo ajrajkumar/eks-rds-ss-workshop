@@ -70,25 +70,20 @@ Parameters:
   SubnetAPrivate:
     Description: SubnetAPrivate
     Type: String
-    Default: subnet-0c40f93bba8c7a898
 
   SubnetBPrivate:
     Description: SubnetBPrivate
     Type: String
-    Default: subnet-0f890153b313f45b6
 
   SubnetCPrivate:
     Description: SubnetCPrivate
     Type: String 
-    Default: subnet-0ad40ae4a0953a6e6
 
   VPC:
      Description: VPC ID
      Type: String
-     Default: vpc-0ebb65d1194794109
 
 Resources:
-
 
   #============================================================================#
   # Creating RDS PostgreSQL Instances
@@ -101,8 +96,8 @@ Resources:
       GenerateSecretString:
         SecretStringTemplate: '{"username": "postgres"}'
         GenerateStringKey: 'password'
-        PasswordLength: 16
-        ExcludeCharacters: '"@/'
+        PasswordLength: 8
+        ExcludePunctuation: true
 
   DBSubnetGroup:
     Type: 'AWS::RDS::DBSubnetGroup'
@@ -114,6 +109,7 @@ Resources:
         - !Ref SubnetBPrivate
         - !Ref SubnetCPrivate
 
+
   InstanceSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
@@ -123,21 +119,42 @@ Resources:
       SecurityGroupEgress:
       - IpProtocol: "-1"
         CidrIp: "0.0.0.0/0"
-
-  InstanceSecurityGroupIngress:
-    Type: "AWS::EC2::SecurityGroupIngress"
-    Properties:
-      GroupId: !Ref "InstanceSecurityGroup"
-      IpProtocol: "tcp"
-      FromPort: "0"
-      ToPort: "65535"
-      SourceSecurityGroupId: !Ref "InstanceSecurityGroup"
+      SecurityGroupIngress:
+       - IpProtocol: "tcp"
+         FromPort: "5432"
+         ToPort: "5432"
+         CidrIp: !Sub '10.0.0.0/8'
+       - IpProtocol: "tcp"
+         FromPort: "5432"
+         ToPort: "5432"
+         SourceSecurityGroupId: !Ref "InstanceSecurityGroup"
 
   DemoInstance1:
     Type: AWS::RDS::DBInstance
     Properties:
       DBInstanceIdentifier: sharding-pg1
       DBName: shardingpg1
+      DBInstanceClass: db.t3.medium
+      Engine: postgres
+      EngineVersion: 13.4
+      AllocatedStorage: 20
+      MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref RDSInstanceRotationSecret, ':SecretString:username}}' ]]
+      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref RDSInstanceRotationSecret, ':SecretString:password}}' ]]
+      PubliclyAccessible: False
+      BackupRetentionPeriod: 0
+      Tags:
+        - Key: Project
+          Value: "Demo of RDS PostgreSQL"
+      VPCSecurityGroups:
+        - !Ref InstanceSecurityGroup
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+
+  DemoInstance2:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: sharding-pg2
+      DBName: shardingpg2
       DBInstanceClass: db.t3.medium
       Engine: postgres
       EngineVersion: 13.4
@@ -385,3 +402,11 @@ Outputs:
 
   DemoInstance1:
      Value: !GetAtt [DemoInstance1, Endpoint.Address]
+
+  RDSSecretsArn:
+     Value: !Ref RDSInstanceRotationSecret
+
+  RDSSecurityGroup:
+     Value: !Ref InstanceSecurityGroup
+
+
