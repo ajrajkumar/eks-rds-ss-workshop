@@ -83,6 +83,11 @@ Parameters:
      Description: VPC ID
      Type: String
 
+  DBNAME:
+     Description: Default Database Name
+     Type: String
+     Default: shardingdb
+
 Resources:
 
   #============================================================================#
@@ -133,7 +138,7 @@ Resources:
     Type: AWS::RDS::DBInstance
     Properties:
       DBInstanceIdentifier: sharding-pg1
-      DBName: shardingpg1
+      DBName: !Ref DBNAME
       DBInstanceClass: db.t3.medium
       Engine: postgres
       EngineVersion: 13.4
@@ -154,7 +159,7 @@ Resources:
     Type: AWS::RDS::DBInstance
     Properties:
       DBInstanceIdentifier: sharding-pg2
-      DBName: shardingpg2
+      DBName: !Ref DBNAME
       DBInstanceClass: db.t3.medium
       Engine: postgres
       EngineVersion: 13.4
@@ -403,10 +408,16 @@ Outputs:
   DemoInstance1:
      Value: !GetAtt [DemoInstance1, Endpoint.Address]
 
+  DemoInstance2:
+     Value: !GetAtt [DemoInstance2, Endpoint.Address]
+
   RDSSecretsArn:
      Value: !Ref RDSInstanceRotationSecret
 
   RDSSecurityGroup:
      Value: !Ref InstanceSecurityGroup
+
+  RDSDBName:
+     Value: !Ref DBNAME
 
 

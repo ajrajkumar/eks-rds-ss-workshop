@@ -7,7 +7,7 @@ function print_line()
 
 function install_packages()
 {
-    sudo yum install -y jq  > ${TERM} 2>&1
+    sudo yum install -y jq  > ${TERM11} 2>&1
     print_line
     echo "Installing aws cli v2"
     print_line
@@ -18,9 +18,9 @@ function install_packages()
     fi
     current_dir=`pwd`
     cd /tmp
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" > ${TERM} 2>&1
-    unzip -o awscliv2.zip > ${TERM} 2>&1
-    sudo ./aws/install --update > ${TERM} 2>&1
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" > ${TERM1} 2>&1
+    unzip -o awscliv2.zip > ${TERM1} 2>&1
+    sudo ./aws/install --update > ${TERM1} 2>&1
     cd $current_dir
 }
 
@@ -29,19 +29,19 @@ function install_k8s_utilities()
     print_line
     echo "Installing Kubectl"
     print_line
-    sudo curl -o /usr/local/bin/kubectl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"  > ${TERM} 2>&1
-    sudo chmod +x /usr/local/bin/kubectl > ${TERM} 2>&1
+    sudo curl -o /usr/local/bin/kubectl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"  > ${TERM1} 2>&1
+    sudo chmod +x /usr/local/bin/kubectl > ${TERM1} 2>&1
     print_line
     echo "Installing eksctl"
     print_line
-    curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp > ${TERM} 2>&1
+    curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp > ${TERM1} 2>&1
     sudo mv /tmp/eksctl /usr/local/bin
     sudo chmod +x /usr/local/bin/eksctl
     print_line
     echo "Installing helm"
     print_line
-    curl -s https://fluxcd.io/install.sh | sudo bash > ${TERM} 2>&1
-    curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash > ${TERM} 2>&1
+    curl -s https://fluxcd.io/install.sh | sudo bash > ${TERM1} 2>&1
+    curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash > ${TERM1} 2>&1
 
 }
 
@@ -50,7 +50,7 @@ function install_postgresql()
     print_line
     echo "Installing Postgresql client"
     print_line
-    sudo amazon-linux-extras install -y postgresql14 > ${TERM} 2>&1
+    sudo amazon-linux-extras install -y postgresql14 > ${TERM1} 2>&1
 }
 
 
@@ -79,7 +79,7 @@ function chk_installation()
     print_line
     for command in kubectl aws eksctl flux helm jq
     do
-        which $command &>${TERM} && echo "$command present" || echo "$command NOT FOUND"
+        which $command &>${TERM1} && echo "$command present" || echo "$command NOT FOUND"
     done
 
 }
@@ -97,38 +97,6 @@ function clone_git()
     cd ack.codecommit
     cp -rp ../ack.gitlab/* .
     print_line
-}
-
-function fix_git()
-{
-    print_line
-    echo "Fixing the git repository"
-    print_line
-
-    cd ${HOME}/environment/ack.codecommit
-
-    # Update infrastructure manifests
-    sed -i -e "s/<region>/$AWS_REGION/g" ./infrastructure/production/ack/*release*.yaml
-    sed -i -e "s/<account_id>/$AWS_ACCOUNT_ID/g" ./infrastructure/production/ack/*serviceaccount.yaml
-
-    # Update application manifests
-    sed -i -e "s/<region>/$AWS_REGION/g" \
-         -e "s/<account_id>/$AWS_ACCOUNT_ID/g" \
-         -e "s/<dbSubnetGroupName>/rds-db-subnet/g" \
-         -e "s/<MemdbSubnetGroupName>/memorydb-db-subnet/g" \
-         -e "s/<vpcSecurityGroupIDs>/$VPCID/g" \
-       ./apps/production/retailapp/*.yaml
-
-    sed -i -e "s/<region>/$AWS_REGION/g" \
-   	-e "s/<account_id>/$AWS_ACCOUNT_ID/g" \
-   	-e "s/<dbSubnetGroupName>/rds-db-subnet/g" \
-   	-e "s/<MemdbSubnetGroupName>/memorydb-db-subnet/g" \
-   	-e "s/<vpcSecurityGroupIDs>/$vpcsg/g" \
-   	./apps/production/*.yaml
-
-    git add .
-    git commit -a -m "Initial version"
-    git push
 }
 
 function install_loadbalancer()
@@ -189,48 +157,6 @@ function run_kubectl()
     kubectl get pods --all-namespaces
 }
 
-function create_iam_user()
-{
-    print_line
-    echo "Creating AWS IAM User for git"
-    print_line
-    aws iam create-user --user-name gituser
-    if [[ $? -ne 0 ]]; then
-      echo "ERROR: Failed to create user"
-    fi
-    print_line
-    aws iam attach-user-policy --user-name gituser \
-      --policy-arn arn:aws:iam::aws:policy/AWSCodeCommitFullAccess
-    if [[ $? -ne 0 ]]; then
-      echo "ERROR: Failed to attach plicy to user"
-    fi
-    print_line
-}
-
-function build_and_publish_container_images()
-{
-    print_line
-    echo "Create docker container images for application and publish to ECR"
-    cd ~/environment/ack.codecommit/apps/src
-    export TERM=xterm
-    make
-    cd -
-    print_line
-}
-
-function create_secret()
-{
-    print_line
-    aws secretsmanager create-secret     --name dbCredential     --description "RDS DB username/password"     --secret-string "{\"dbuser\":\"adminer\",\"password\":\"postgres\"}" 
-    print_line
-}
-
-function install_c9()
-{
-    print_line
-    npm install -g c9
-    print_line
-}
 
 function chk_cloud9_permission()
 {
@@ -249,36 +175,6 @@ function chk_cloud9_permission()
 	echo "After fixing the credentials. Current role"
         aws sts get-caller-identity | grep ${INSTANCE_ROLE}
     fi
-}
-
-
-function initial_cloud9_permission()
-{
-    print_line
-    echo "Checking initial cloud9 permission"
-    typeset -i counter=0
-    managed_role="FALSE"
-    while [ ${counter} -lt 30 ] 
-    do
-        aws sts get-caller-identity | grep ${INSTANCE_ROLE}  
-        if [ $? -eq 0 ] ; then
-            echo "Called identity is Instance role .. Waiting - ${counter}"
-	    sleep 30
-	    counter=$counter+1
-	else
-	    echo "Called identity is AWS Managed Role .. breaking"
-	    managed_role="TRUE"
-	    break
-	fi
-    done
-
-    if [ ${managed_role} == "TRUE" ] ;  then
-        echo "Current role is AWS managed role"
-    else
-        echo "Current role is Instance role.. May cause issue later deployment. But still continuing"
-    fi
-
-    chk_cloud9_permission
 }
 
 
@@ -326,49 +222,96 @@ function create_eks_cluster()
     fi
 }
 
+function generate_sql()
+{
+   echo "Generating SQL file to be applied to shardingsphere" 
+   username=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-2:964342896082:secret:RDSInstanceRotationSecret-kW0Cw7o616sz-YadZSj | jq -r .SecretString | jq -r .username)
+   password=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-2:964342896082:secret:RDSInstanceRotationSecret-kW0Cw7o616sz-YadZSj | jq -r .SecretString | jq -r .password)
+   inst1=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `DemoInstance1`].OutputValue' --output text)
+   inst2=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `DemoInstance2`].OutputValue' --output text)
+   dbname=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `RDSDBName`].OutputValue' --output text)
+
+   cat ${SS_TEMPLATE} | sed "s/%DBNAME%/${dbname}/g" |  sed "s/%DB1EP%/${inst1}/g" | sed "s/%DB2EP%/${inst2}/g" | sed "s/%USERNAME%/${username}/g" | sed "s/%PASSWORD%/${password}/g" > ${SS_SQL}
+   
+}
+
+
+function set_env()
+{
+    export INSTANCE_ROLE="C9Role"
+    export EKS_STACK_NAME="eks-rds-ss-workshop"
+    export EKS_CFN_FILE="${HOME}/environment/eks-rds-ss-workshop/eks-rds-ss-main.yaml"
+    export EKS_NAMESPACE="kube-system"
+    export SS_TEMPLATE="ss-distsql.tmpl"
+    export SS_SQL="ss-distsql.sql"
+    export AWS_REGION=`curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq .region -r`
+    export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text) 
+    export VPCID=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `VPC`].OutputValue' --output text)
+    export SUBNETA=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `SubnetAPrivate`].OutputValue' --output text)
+    export SUBNETB=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `SubnetBPrivate`].OutputValue' --output text)
+    export SUBNETC=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `SubnetCPrivate`].OutputValue' --output text)
+    export RDSSECRETARN=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `RDSSecretsArn`].OutputValue' --output text)
+    export RDSSECURITYGROUP=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `RDSSecurityGroup`].OutputValue' --output text)
+}
+
+function fix_loadbalancer()
+{
+    loadbalancer_name=$(kubectl get service | grep LoadBalancer | awk '{print $4}' | awk -F'.' '{print $1}' | awk -F'-' '{print $1'})
+    azA=$(aws ec2 describe-subnets --subnet-id ${SUBNETA} | jq -r .Subnets[0].AvailabilityZone)
+    azB=$(aws ec2 describe-subnets --subnet-id ${SUBNETB} | jq -r .Subnets[0].AvailabilityZone)
+    azC=$(aws ec2 describe-subnets --subnet-id ${SUBNETC} | jq -r .Subnets[0].AvailabilityZone)
+    az_subA="${azA}_${SUBNETA}"
+    az_subB="${azB}_${SUBNETB}"
+    az_subC="${azC}_${SUBNETC}"
+
+    assigned_subnet=$(aws elb describe-load-balancers --load-balancer-name af8feca71edf24048bd70696c6ed87e1 | jq -r .LoadBalancerDescriptions[0].Subnets[])
+    azAssigned=$(aws ec2 describe-subnets --subnet-id ${assigned_subnet} | jq -r .Subnets[0].AvailabilityZone)
+
+    echo ${assigned_subnet}
+
+    for az_subnets in ${az_subA} ${az_subB} ${az_subC}
+    do
+	echo ${az_subnets}
+	echo ${az_subnets} | grep ${azAssigned} > /dev/null 2>&1
+	if [ $? -ne 0 ] ; then
+	   newsubnet=`echo ${az_subnets} | awk -F'_' '{print $2}'` 
+           newsubnets="${newsubnets} ${newsubnet}"
+        fi
+	echo ${newsubnets}
+    done
+    echo "aws elb attach-load-balancer-to-subnets --load-balancer-name ${loadbalancer_name} --subnets ${newsubnets}"
+    aws elb attach-load-balancer-to-subnets --load-balancer-name ${loadbalancer_name} --subnets ${newsubnets}
+}
+
+
 # Main program starts here
+export TERM1="/dev/null"
+export TERM=xterm
 
-export INSTANCE_ROLE="C9Role"
-
-if [ ${1}X == "-xX" ] ; then
-    TERM="/dev/tty"
-else
-    TERM="/dev/null"
+if [ ${1}X == "fix_loadbalancerX" ] ; then
+    set_env
+    fix_loadbalancer
+    exit
 fi
 
 echo "Process started at `date`"
-install_packages
 
-export AWS_REGION=`curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq .region -r`
-##initial_cloud9_permission
-export EKS_STACK_NAME="eks-rds-ss-workshop"
-export EKS_CFN_FILE="${HOME}/environment/eks-rds-ss-workshop/eks-rds-ss-main.yaml"
-export EKS_NAMESPACE="kube-system"
-export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text) 
-export VPCID=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `VPC`].OutputValue' --output text)
-export SUBNETA=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `SubnetAPrivate`].OutputValue' --output text)
-export SUBNETB=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `SubnetBPrivate`].OutputValue' --output text)
-export SUBNETC=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `SubnetCPrivate`].OutputValue' --output text)
- 
+install_packages
+set_env
 install_k8s_utilities
 install_postgresql
-##create_iam_user
 ##clone_git
 chk_cloud9_permission
 create_eks_cluster
 export EKS_CLUSTER_NAME=$(aws cloudformation describe-stacks --query "Stacks[].Outputs[?(OutputKey == 'EKSClusterName')][].{OutputValue:OutputValue}" --output text)
 export vpcsg=$(aws ec2 describe-security-groups --filters Name=ip-permission.from-port,Values=5432 Name=ip-permission.to-port,Values=5432 --query "SecurityGroups[0].GroupId" --output text)
 print_environment
-#fix_git
 update_kubeconfig
 update_eks
 ##install_loadbalancer
-chk_installation
+hk_installation
 run_kubectl
-#build_and_publish_container_images
-#create_secret
 print_line
-#install_c9
 print_line
-
+generate_sql
 echo "Process completed at `date`"
