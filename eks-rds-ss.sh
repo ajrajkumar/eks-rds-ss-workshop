@@ -7,7 +7,8 @@ function print_line()
 
 function install_packages()
 {
-    sudo yum install -y jq  > ${TERM11} 2>&1
+    current_dir=`pwd`
+    sudo yum install -y jq  > ${TERM1} 2>&1
     print_line
     echo "Installing aws cli v2"
     print_line
@@ -16,7 +17,6 @@ function install_packages()
         cd $current_dir
 	return
     fi
-    current_dir=`pwd`
     cd /tmp
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" > ${TERM1} 2>&1
     unzip -o awscliv2.zip > ${TERM1} 2>&1
@@ -82,21 +82,6 @@ function chk_installation()
         which $command &>${TERM1} && echo "$command present" || echo "$command NOT FOUND"
     done
 
-}
-
-
-function clone_git()
-{
-    print_line
-    echo "Cloning the git repository"
-    print_line
-    cd ${HOME}/environment
-    rm -rf ack.gitlab ack.codecommit
-    git clone https://github.com/ajrajkumar/ack-gitops-workshop.git ack.gitlab
-    git clone https://git-codecommit.${AWS_REGION}.amazonaws.com/v1/repos/ack-gitops-workshop ack.codecommit
-    cd ack.codecommit
-    cp -rp ../ack.gitlab/* .
-    print_line
 }
 
 function install_loadbalancer()
@@ -197,7 +182,6 @@ function create_eks_cluster()
     typeset -i counter
     counter=0
     echo "aws cloudformation  create-stack --stack-name ${EKS_STACK_NAME} --parameters ParameterKey=VPC,ParameterValue=${VPCID} ParameterKey=SubnetAPrivate,ParameterValue=${SUBNETA} ParameterKey=SubnetBPrivate,ParameterValue=${SUBNETB} ParameterKey=SubnetCPrivate,ParameterValue=${SUBNETC} --template-body file://${EKS_CFN_FILE} --capabilities CAPABILITY_IAM"
-    return
     aws cloudformation  create-stack --stack-name ${EKS_STACK_NAME} --parameters ParameterKey=VPC,ParameterValue=${VPCID} ParameterKey=SubnetAPrivate,ParameterValue=${SUBNETA} ParameterKey=SubnetBPrivate,ParameterValue=${SUBNETB} ParameterKey=SubnetCPrivate,ParameterValue=${SUBNETC} --template-body file://${EKS_CFN_FILE} --capabilities CAPABILITY_IAM
     sleep 60
     # Checking to make sure the cloudformation completes before continuing
@@ -224,9 +208,10 @@ function create_eks_cluster()
 
 function generate_sql()
 {
+   pwd
    echo "Generating SQL file to be applied to shardingsphere" 
-   username=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-2:964342896082:secret:RDSInstanceRotationSecret-kW0Cw7o616sz-YadZSj | jq -r .SecretString | jq -r .username)
-   password=$(aws secretsmanager get-secret-value --secret-id arn:aws:secretsmanager:us-east-2:964342896082:secret:RDSInstanceRotationSecret-kW0Cw7o616sz-YadZSj | jq -r .SecretString | jq -r .password)
+   username=$(aws secretsmanager get-secret-value --secret-id ${RDSSECRETARN}| jq -r .SecretString | jq -r .username)
+   password=$(aws secretsmanager get-secret-value --secret-id ${RDSSECRETARN} | jq -r .SecretString | jq -r .password)
    inst1=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `DemoInstance1`].OutputValue' --output text)
    inst2=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `DemoInstance2`].OutputValue' --output text)
    dbname=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `RDSDBName`].OutputValue' --output text)
@@ -234,7 +219,6 @@ function generate_sql()
    cat ${SS_TEMPLATE} | sed "s/%DBNAME%/${dbname}/g" |  sed "s/%DB1EP%/${inst1}/g" | sed "s/%DB2EP%/${inst2}/g" | sed "s/%USERNAME%/${username}/g" | sed "s/%PASSWORD%/${password}/g" > ${SS_SQL}
    
 }
-
 
 function set_env()
 {
@@ -309,7 +293,7 @@ print_environment
 update_kubeconfig
 update_eks
 ##install_loadbalancer
-hk_installation
+chk_installation
 run_kubectl
 print_line
 print_line

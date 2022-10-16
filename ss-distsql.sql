@@ -1,5 +1,5 @@
-ADD RESOURCE ds_0 (URL="jdbc:postgresql://sharding-pg1.czix8sw33ibu.us-east-2.rds.amazonaws.com:5432/%DB1%",USER=postgres,PASSWORD=sSv6bGPL);
-ADD RESOURCE ds_1 (URL="jdbc:postgresql://:5432/$DB2%",USER=postgres,PASSWORD=sSv6bGPL);
+ADD RESOURCE ds_0 (URL="jdbc:postgresql://sharding-pg1.cnhndiizzmuc.us-east-2.rds.amazonaws.com:5432/%DB1%",USER=postgres,PASSWORD=KTzhanf9);
+ADD RESOURCE ds_1 (URL="jdbc:postgresql://sharding-pg2.cnhndiizzmuc.us-east-2.rds.amazonaws.com:5432/$DB2%",USER=postgres,PASSWORD=KTzhanf9);
 
 CREATE SHARDING ALGORITHM 
 database_inline (
