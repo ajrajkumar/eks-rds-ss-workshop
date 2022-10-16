@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: shardingsphere
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: external #AWS Load Balancer Controller fulfills services that has this annotation 
+    service.beta.kubernetes.io/aws-load-balancer-name : mynlb #User defined name given to AWS Network Load Balancer
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internal  #Places the load balancer on public subnets
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip #The Pod IPs should be used as the target IPs (rather than the node IPs as was the case with Network Load Balancer in the previous section)
+  namespace: default
+  labels:
+    app: shardingsphere-proxy-apache-shardingsphere-proxy
+spec:
+  type: LoadBalancer #The type of service
+  ports:
+    - port: 3307 #The port which the service is running on
+      targetPort: 3307 #The port on the pod which is backing this service. If not specified, it is assumed to be the same as the service port.
+      name: tcp
+  selector:
+    app: shardingsphere-proxy-apache-shardingsphere-proxy

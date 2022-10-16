@@ -86,10 +86,16 @@ function chk_installation()
 
 function install_loadbalancer()
 {
-
     print_line
     echo "Installing load balancer"
     print_line
+
+    eksctl utils associate-iam-oidc-provider --region ${AWS_REGION} --cluster ${EKS_CLUSTER_NAME} --approve
+
+    curl -o iam_policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.2.0/docs/install/iam_policy.json
+
+    aws iam create-policy --policy-name AWSLoadBalancerControllerIAMPolicy --policy-document file://iam_policy.json
+
     eksctl create iamserviceaccount \
      --cluster=${EKS_CLUSTER_NAME} \
      --namespace=${EKS_NAMESPACE} \
@@ -98,9 +104,8 @@ function install_loadbalancer()
      --override-existing-serviceaccounts \
      --approve
 
-    helm repo add eks https://aws.github.io/eks-charts
-
     kubectl apply -k "github.com/aws/eks-charts/stable/aws-load-balancer-controller//crds?ref=master"
+    helm repo add eks https://aws.github.io/eks-charts
 
     helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
      --set clusterName=${EKS_CLUSTER_NAME} \
@@ -284,7 +289,6 @@ install_packages
 set_env
 install_k8s_utilities
 install_postgresql
-##clone_git
 chk_cloud9_permission
 create_eks_cluster
 export EKS_CLUSTER_NAME=$(aws cloudformation describe-stacks --query "Stacks[].Outputs[?(OutputKey == 'EKSClusterName')][].{OutputValue:OutputValue}" --output text)
@@ -292,7 +296,7 @@ export vpcsg=$(aws ec2 describe-security-groups --filters Name=ip-permission.fro
 print_environment
 update_kubeconfig
 update_eks
-##install_loadbalancer
+install_loadbalancer
 chk_installation
 run_kubectl
 print_line
