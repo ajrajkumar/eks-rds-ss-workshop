@@ -226,13 +226,14 @@ function generate_sql()
 }
 
 function set_env()
-{
+{ 
+    export BASE="${HOME}/environment/eks-rds-ss-workshop"
     export INSTANCE_ROLE="C9Role"
     export EKS_STACK_NAME="eks-rds-ss-workshop"
-    export EKS_CFN_FILE="${HOME}/environment/eks-rds-ss-workshop/eks-rds-ss-main.yaml"
+    export EKS_CFN_FILE="${BASE}/cfn/ss-rds-eks-main.yaml"
     export EKS_NAMESPACE="kube-system"
-    export SS_TEMPLATE="ss-distsql.tmpl"
-    export SS_SQL="ss-distsql.sql"
+    export SS_TEMPLATE="${BASE}/template/ss-distsql.tmpl"
+    export SS_SQL="${BASE}/sql/ss-distsql.sql"
     export AWS_REGION=`curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq .region -r`
     export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text) 
     export VPCID=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `VPC`].OutputValue' --output text)
