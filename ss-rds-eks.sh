@@ -211,25 +211,30 @@ function create_eks_cluster()
     fi
 }
 
+
+function get_db_env()
+{
+   export username=$(aws secretsmanager get-secret-value --secret-id ${RDSSECRETARN}| jq -r .SecretString | jq -r .username)
+   export password=$(aws secretsmanager get-secret-value --secret-id ${RDSSECRETARN} | jq -r .SecretString | jq -r .password)
+   export inst1=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `DemoInstance1`].OutputValue' --output text)
+   export inst2=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `DemoInstance2`].OutputValue' --output text)
+   export dbname=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `RDSDBName`].OutputValue' --output text)
+
+}
+
 function generate_sql()
 {
    pwd
    echo "Generating SQL file to be applied to shardingsphere" 
-   username=$(aws secretsmanager get-secret-value --secret-id ${RDSSECRETARN}| jq -r .SecretString | jq -r .username)
-   password=$(aws secretsmanager get-secret-value --secret-id ${RDSSECRETARN} | jq -r .SecretString | jq -r .password)
-   inst1=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `DemoInstance1`].OutputValue' --output text)
-   inst2=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `DemoInstance2`].OutputValue' --output text)
-   dbname=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `RDSDBName`].OutputValue' --output text)
-
+   get_db_env
    cat ${SS_TEMPLATE} | sed "s/%DBNAME%/${dbname}/g" |  sed "s/%DB1EP%/${inst1}/g" | sed "s/%DB2EP%/${inst2}/g" | sed "s/%USERNAME%/${username}/g" | sed "s/%PASSWORD%/${password}/g" > ${SS_SQL}
-   
 }
 
 function set_env()
 { 
-    export BASE="${HOME}/environment/eks-rds-ss-workshop"
+    export BASE="${HOME}/environment/ss-rds-eks-workshop"
     export INSTANCE_ROLE="C9Role"
-    export EKS_STACK_NAME="eks-rds-ss-workshop"
+    export EKS_STACK_NAME="ss-rds-eks-main"
     export EKS_CFN_FILE="${BASE}/cfn/ss-rds-eks-main.yaml"
     export EKS_NAMESPACE="kube-system"
     export SS_TEMPLATE="${BASE}/template/ss-distsql.tmpl"
@@ -244,43 +249,25 @@ function set_env()
     export RDSSECURITYGROUP=$(aws cloudformation describe-stacks --region $AWS_REGION --query 'Stacks[].Outputs[?OutputKey == `RDSSecurityGroup`].OutputValue' --output text)
 }
 
-function fix_loadbalancer()
+
+function get_instance_info()
 {
-    loadbalancer_name=$(kubectl get service | grep LoadBalancer | awk '{print $4}' | awk -F'.' '{print $1}' | awk -F'-' '{print $1'})
-    azA=$(aws ec2 describe-subnets --subnet-id ${SUBNETA} | jq -r .Subnets[0].AvailabilityZone)
-    azB=$(aws ec2 describe-subnets --subnet-id ${SUBNETB} | jq -r .Subnets[0].AvailabilityZone)
-    azC=$(aws ec2 describe-subnets --subnet-id ${SUBNETC} | jq -r .Subnets[0].AvailabilityZone)
-    az_subA="${azA}_${SUBNETA}"
-    az_subB="${azB}_${SUBNETB}"
-    az_subC="${azC}_${SUBNETC}"
-
-    assigned_subnet=$(aws elb describe-load-balancers --load-balancer-name af8feca71edf24048bd70696c6ed87e1 | jq -r .LoadBalancerDescriptions[0].Subnets[])
-    azAssigned=$(aws ec2 describe-subnets --subnet-id ${assigned_subnet} | jq -r .Subnets[0].AvailabilityZone)
-
-    echo ${assigned_subnet}
-
-    for az_subnets in ${az_subA} ${az_subB} ${az_subC}
-    do
-	echo ${az_subnets}
-	echo ${az_subnets} | grep ${azAssigned} > /dev/null 2>&1
-	if [ $? -ne 0 ] ; then
-	   newsubnet=`echo ${az_subnets} | awk -F'_' '{print $2}'` 
-           newsubnets="${newsubnets} ${newsubnet}"
-        fi
-	echo ${newsubnets}
-    done
-    echo "aws elb attach-load-balancer-to-subnets --load-balancer-name ${loadbalancer_name} --subnets ${newsubnets}"
-    aws elb attach-load-balancer-to-subnets --load-balancer-name ${loadbalancer_name} --subnets ${newsubnets}
+    get_db_env
+    print_line
+    echo "Instance-1 Endpoint : ${inst1}"
+    echo "Instance-2 Endpoint : ${inst2}"
+    echo "DatabaseName        : ${dbname}"
+    echo "Username            : ${username}"
+    echo "Password            : ${password}"
 }
-
 
 # Main program starts here
 export TERM1="/dev/null"
 export TERM=xterm
 
-if [ ${1}X == "fix_loadbalancerX" ] ; then
+if [ ${1}X == "get-instance-infoX" ] ; then
     set_env
-    fix_loadbalancer
+    get_instance_info
     exit
 fi
 

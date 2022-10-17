@@ -28,7 +28,7 @@ compute:
       cpu: 200m
   replicas: 3
   service:
-    type: NodePort
+    type: ClusterIP
     port: 3307
   mysqlConnector:
     enabled: false
